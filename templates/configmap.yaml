@@ -1,20 +1,16 @@
-{{- if or .Values.customLdifFiles .Values.customSchemaFiles }}
+{{- /*
+templates/configmap.yaml
+Creates a ConfigMap to hold the custom LDIF files from the correct values path.
+*/}}
+{{- if and .Values.directory.customLdifs (not .Values.directory.quickstart.enabled) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ printf "%s-ldif" (include "common.names.fullname" .) }}
-  namespace: {{ include "common.names.namespace" . | quote }}
+  name: {{ include "common.names.fullname" . }}-ldifs
   labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
-  {{- if .Values.commonAnnotations }}
-  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-  {{- end }}
 data:
-  {{- range $key, $val := .Values.customLdifFiles }}
-  {{ $key }}: |-
-{{ $val | indent 4 }}
-  {{- end }}
-  {{- range $key, $val := .Values.customSchemaFiles }}
-  {{ $key }}: |-
-{{ $val | indent 4 }}
+  {{- range $filename, $content := .Values.directory.customLdifs }}
+  {{ $filename }}: |-
+    {{ $content | nindent 4 }}
   {{- end }}
 {{- end }}

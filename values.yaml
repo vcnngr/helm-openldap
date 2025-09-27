@@ -1,0 +1,115 @@
+# Default values for the openldap-enterprise Helm chart.
+# Do not modify this file directly. Create an override file for your installations.
+
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: ""
+
+nameOverride: ""
+fullnameOverride: ""
+clusterDomain: cluster.local
+
+image:
+  registry: docker.io
+  repository: bitnami/openldap
+  tag: "2.6.9-debian-12-r0"
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+auth:
+  adminUser: "admin"
+  existingSecret: ""
+  adminPassword: ""
+  configPassword: ""
+
+directory:
+  baseDN: "dc=example,dc=org"
+  organisation: "Example Inc."
+
+  quickstart:
+    enabled: true
+    userOu: "users"
+    groupOu: "groups"
+    users: "user01,user02"
+    passwords: "bitnami1,bitnami2"
+    group: "readers"
+
+  customLdifs: {}
+
+multiTenant:
+  enabled: false
+  additionalSuffixes: []
+
+highAvailability:
+  enabled: true
+  replicaCount: 3
+
+tls:
+  enabled: true
+  existingSecret: "" # Required if tls.enabled=true
+
+persistence:
+  enabled: true
+  storageClassName: ""
+  size: 10Gi
+
+statefulsetAnnotations: {}
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+    - labelSelector:
+        matchExpressions:
+        - key: app.kubernetes.io/name
+          operator: In
+          values:
+          - openldap-enterprise
+      topologyKey: "kubernetes.io.hostname"
+
+service:
+  type: ClusterIP # Exposed via Traefik IngressRouteTCP, not directly
+  ports:
+    ldap: 1389 # Internal non-TLS port for probes
+    ldaps: 1636 # Internal TLS port
+  annotations: {}
+
+## @section Service Account
+##
+serviceAccount:
+  ## @param serviceAccount.create Specifies whether a ServiceAccount should be created.
+  create: true
+  ## @param serviceAccount.name The name of the ServiceAccount to use.
+  ## If not set and create is true, a name is generated using the fullname template.
+  name: ""
+  ## @param serviceAccount.automountServiceAccountToken Automount service account token.
+  automountServiceAccountToken: false
+  ## @param serviceAccount.annotations Annotations for the service account.
+  annotations: {}
+
+metrics:
+  enabled: false
+  serviceMonitor:
+    enabled: false
+    namespace: monitoring
+
+## @section Sub-chart: phpldapadmin
+## Configuration for the alphani/phpldapadmin sub-chart
+phpldapadmin:
+  ## @param phpldapadmin.enabled Enable the deployment of the phpLDAPadmin web UI.
+  enabled: false
+
+  replicaCount: 1
+  
+  ## @param phpldapadmin.env Environment variables for the container.
+  ## This must be a MAP (key-value), not a list.
+  ## It will be merged with the values provided in the override file.
+  env:
+    PHPLDAPADMIN_HTTPS: "false"
+    PHPLDAPADMIN_TRUST_PROXY_SSL: "true"
+
+  ## @section Ingress Configuration
+  ingress:
+    enabled: false
+    hostname: ""
+    annotations: {}
+    tls: []

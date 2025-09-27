@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "common.names.fullname" . }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.statefulsetAnnotations "context" $ ) | nindent 4 }}
+spec:
+  replicas: {{ .Values.highAvailability.replicaCount }}
+  serviceName: {{ include "common.names.fullname" . }}-headless
+  selector:
+    matchLabels: {{- include "common.labels.matchLabels" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 8 }}
+    spec:
+      serviceAccountName: {{ template "openldap-enterprise.serviceAccountName" . }}
+      securityContext:
+        fsGroup: 1001
+      affinity: {{- include "common.tplvalues.render" ( dict "value" .Values.affinity "context" $) | nindent 8 }}
+      containers:
+        - name: openldap
+          image: {{ include "openldap-enterprise.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            runAsUser: 1001
+            runAsNonRoot: true
+          env:
+            - name: BITNAMI_DEBUG
+              value: "false"
+            - name: LDAP_REPLICATION_MODE
+              value: "provider"
+            - name: LDAP_REPLICATION_PROVIDER_LIST
+              value: {{ include "openldap-enterprise.replication.uris" . | quote }}
+            - name: LDAP_ORGANIZATION
+              value: {{ .Values.directory.organisation | quote }}
+            - name: LDAP_BASE_DN
+              value: {{ .Values.directory.baseDN | quote }}
+            - name: LDAP_ADMIN_PASSWORD_FILE
+              value: /opt/bitnami/openldap/secrets/admin-password
+            - name: LDAP_CONFIG_PASSWORD_FILE
+              value: /opt/bitnami/openldap/secrets/config-password
+            - name: LDAP_TLS_ENABLED
+              value: "true"
+            - name: LDAP_TLS_CERT_FILE
+              value: /opt/bitnami/openldap/certs/tls.crt
+            - name: LDAP_TLS_KEY_FILE
+              value: /opt/bitnami/openldap/certs/tls.key
+            - name: LDAP_TLS_CA_FILE
+              value: /opt/bitnami/openldap/certs/ca.crt
+            - name: LDAP_SKIP_DEFAULT_TREE
+              value: {{ ternary "yes" "no" (not .Values.directory.quickstart.enabled) | quote }}
+            {{- if .Values.directory.quickstart.enabled }}
+            - name: LDAP_USER_OU
+              value: {{ .Values.directory.quickstart.userOu | quote }}
+            - name: LDAP_GROUP_OU
+              value: {{ .Values.directory.quickstart.groupOu | quote }}
+            - name: LDAP_USERS
+              value: {{ .Values.directory.quickstart.users | quote }}
+            - name: LDAP_PASSWORDS
+              value: {{ .Values.directory.quickstart.passwords | quote }}
+            - name: LDAP_GROUP
+              value: {{ .Values.directory.quickstart.group | quote }}
+            {{- end }}
+          ports:
+            - name: ldap
+              containerPort: {{ .Values.service.ports.ldap }}
+            - name: ldaps
+              containerPort: {{ .Values.service.ports.ldaps }}
+          livenessProbe:
+            tcpSocket:
+              port: ldap
+          readinessProbe:
+            tcpSocket:
+              port: ldap
+          volumeMounts:
+            - name: data
+              mountPath: /bitnami/openldap
+            - name: openldap-secrets
+              mountPath: /opt/bitnami/openldap/secrets
+              readOnly: true
+            - name: tls-certs
+              mountPath: /opt/bitnami/openldap/certs
+              readOnly: true
+            - name: custom-ldifs
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+      volumes:
+        - name: openldap-secrets
+          secret:
+            secretName: {{ template "openldap-enterprise.secretName" . }}
+        - name: tls-certs
+          secret:
+            secretName: {{ .Values.tls.existingSecret }}
+        - name: custom-ldifs
+          configMap:
+            name: {{ include "common.names.fullname" . }}-ldifs
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        storageClassName: {{ .Values.persistence.storageClassName | default .Values.global.storageClass }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size }}

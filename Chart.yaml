@@ -1,0 +1,28 @@
+apiVersion: v2
+name: openldap-enterprise
+description: A truly enterprise-ready OpenLDAP Helm chart, independent and robust.
+type: application
+version: 1.0.0
+appVersion: "2.6"
+keywords:
+  - ldap
+  - openldap
+  - directory
+  - authentication
+  - enterprise
+home: https://www.openldap.org/
+sources:
+  - https://github.com/bitnami/containers/tree/main/bitnami/openldap
+icon: https://bitnami.com/assets/stacks/openldap/img/openldap-stack-220x234.png
+annotations:
+  category: Database
+dependencies:
+  # Crucial dependency for Bitnami patterns
+  - name: common
+    repository: oci://registry-1.docker.io/bitnamicharts
+    version: 2.x.x
+  # Community phpLDAPadmin sub-chart
+  - name: phpldapadmin
+    repository: https://roertel.github.io/helm-charts
+    version: "0.1.4-2"
+    condition: phpldapadmin.enabled

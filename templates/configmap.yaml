@@ -1,0 +1,20 @@
+{{- if or .Values.customLdifFiles .Values.customSchemaFiles }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "%s-ldif" (include "common.names.fullname" .) }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  {{- range $key, $val := .Values.customLdifFiles }}
+  {{ $key }}: |-
+{{ $val | indent 4 }}
+  {{- end }}
+  {{- range $key, $val := .Values.customSchemaFiles }}
+  {{ $key }}: |-
+{{ $val | indent 4 }}
+  {{- end }}
+{{- end }}

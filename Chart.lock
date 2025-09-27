@@ -1,0 +1,9 @@
+dependencies:
+- name: common
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 2.31.4
+- name: phpldapadmin
+  repository: https://roertel.github.io/helm-charts
+  version: 0.1.4-2
+digest: sha256:7bc3840aa496284a23f8120029af8a78978dbfa81cd5dc7886935fc51f4300a0
+generated: "2025-09-27T12:32:00.579154+02:00"

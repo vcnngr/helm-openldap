@@ -1,0 +1,39 @@
+{{- /*
+templates/NOTES.txt
+This file contains the post-installation notes.
+*/}}
+
+{{- define "openldap-enterprise.notes" }}
+{{- $fullname := include "common.names.fullname" . -}}
+{{- $secretName := include "openldap-enterprise.secretName" . -}}
+{{- $releaseName := .Release.Name -}}
+{{- $namespace := .Release.Namespace -}}
+
+1. **Deployment Status**
+   Run this command to check the status of your OpenLDAP StatefulSet:
+   kubectl get statefulset -n {{ $namespace }} {{ $fullname }}
+
+2. **Connecting to the Service**
+   Your OpenLDAP cluster is available inside the cluster at the following service address:
+   - Host: {{ $fullname }}.{{ $namespace }}.svc.{{ .Values.clusterDomain }}
+   - LDAPS Port: {{ .Values.service.ports.ldaps }}
+
+3. **Administrative Credentials**
+   {{- if .Values.auth.existingSecret }}
+   Passwords are being managed by your pre-existing secret: {{ .Values.auth.existingSecret }}
+   {{- else }}
+   A password for the admin user ({{ .Values.auth.adminUser }}) has been stored in the secret: {{ $secretName }}
+   To retrieve it, run the following command:
+   kubectl get secret --namespace {{ $namespace }} {{ $secretName }} -o jsonpath="{.data.admin-password}" | base64 -d | xargs echo "Admin Password:"
+   {{- end }}
+
+{{- if .Values.phpldapadmin.enabled }}
+4. **Accessing phpLDAPadmin**
+   The phpLDAPadmin web UI is available at the following address (it might take a few minutes for the ingress to be ready):
+   {{- $phpldapadminIngress := index .Values.phpldapadmin.ingress.hosts 0 }}
+
+     https://{{ $phpldapadminIngress.host }}
+{{- end }}
+{{- end }}
+
+{{- include "openldap-enterprise.notes" . }}

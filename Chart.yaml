@@ -2,7 +2,7 @@ apiVersion: v2
 name: openldap-enterprise
 description: A truly enterprise-ready OpenLDAP Helm chart, independent and robust.
 type: application
-version: 1.0.0
+version: 1.0.1
 appVersion: "2.6"
 keywords:
   - ldap
@@ -26,3 +26,9 @@ dependencies:
     repository: https://roertel.github.io/helm-charts
     version: "0.1.4-2"
     condition: phpldapadmin.enabled
+
+annotations:
+  artifacthub.io/license: GPL-3.0
+  artifacthub.io/signKey: |
+    fingerprint: 10F12F911D681AFFE80556E6F85268B2C4F95831
+    url: https://keys.openpgp.org/vks/v1/by-fingerprint/10F12F911D681AFFE80556E6F85268B2C4F95831

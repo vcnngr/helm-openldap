@@ -16,3 +16,11 @@ sources:
 maintainers:
   - name: vcnngr
     email: vincenzo@ingrosso.net
+icon: https://bitnami.com/assets/stacks/openldap/img/openldap-stack-220x234.png
+annotations:
+  category: Database
+annotations:
+  artifacthub.io/license: GPL-3.0
+  artifacthub.io/signKey: |
+    fingerprint: 10F12F911D681AFFE80556E6F85268B2C4F95831
+    url: https://keys.openpgp.org/vks/v1/by-fingerprint/10F12F911D681AFFE80556E6F85268B2C4F95831

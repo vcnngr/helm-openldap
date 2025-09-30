@@ -14,5 +14,5 @@ home: https://www.openldap.org/
 sources:
   - https://github.com/osixia/docker-openldap
 maintainers:
-  - name: Your Name
-    email: your.email@example.com
+  - name: vcnngr
+    email: vincenzo@ingrosso.net

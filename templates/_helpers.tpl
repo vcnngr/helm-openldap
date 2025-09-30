@@ -92,9 +92,10 @@ Generate replication hosts list for LDAP_REPLICATION_HOSTS
 {{- define "openldap-ha.replicationHosts" -}}
 {{- $replicas := int .Values.openldap.replication.replicas }}
 {{- $namespace := .Values.namespace }}
+{{- $fullname := include "openldap-ha.fullname" . }}
 {{- $hosts := list }}
 {{- range $i := until $replicas }}
-{{- $hosts = append $hosts (printf "ldap://openldap-%d.openldap-headless.%s.svc.cluster.local" $i $namespace) }}
+{{- $hosts = append $hosts (printf "ldap://%s-%d.%s-headless.%s.svc.cluster.local" $fullname $i $fullname $namespace) }}
 {{- end }}
 {{- printf "#PYTHON2BASH:%s" (toJson $hosts) }}
 {{- end }}

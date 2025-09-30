@@ -1,0 +1,94 @@
+# Production example configuration
+# Copy this file and customize for your environment
+#
+# Usage:
+#   helm install my-ldap openldap-ha -f production-values.yaml
+
+namespace: production
+
+openldap:
+  # REQUIRED: Change these for your organization
+  organization: "Acme Corporation"
+  domain: "acme.com"
+  
+  # SECURITY: Change these passwords!
+  adminPassword: "CHANGE_ME_STRONG_PASSWORD"
+  configPassword: "CHANGE_ME_CONFIG_PASSWORD"
+  
+  # High availability configuration
+  replication:
+    enabled: true
+    replicas: 5  # Odd number recommended for quorum
+  
+  # TLS configuration with Let's Encrypt
+  tls:
+    enabled: true
+    enforce: true  # Force TLS connections
+    certificate:
+      enabled: true
+      issuerName: "letsencrypt-prod"
+      issuerKind: "ClusterIssuer"
+      subject:
+        organizations:
+          - "Acme Corporation"
+  
+  # Production resources
+  resources:
+    requests:
+      memory: "2Gi"
+      cpu: "1000m"
+    limits:
+      memory: "4Gi"
+      cpu: "4000m"
+  
+  # Storage with fast SSD
+  persistence:
+    data:
+      enabled: true
+      size: 50Gi
+      storageClass: "fast-ssd"
+    config:
+      enabled: true
+      size: 5Gi
+      storageClass: "fast-ssd"
+  
+  # Spread pods across nodes
+  antiAffinity:
+    enabled: true
+    weight: 100
+
+# Service configuration
+service:
+  type: ClusterIP
+  annotations:
+    # Add any cloud provider annotations here
+    # service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+
+# Ensure high availability
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 3  # For 5 replicas
+
+# phpLDAPadmin for management
+phpldapadmin:
+  enabled: true
+  replicas: 2  # For HA
+  
+  ingress:
+    enabled: true
+    className: "traefik"
+    hostname: "ldapadmin.acme.com"
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      traefik.ingress.kubernetes.io/router.entrypoints: "websecure"
+      traefik.ingress.kubernetes.io/router.tls: "true"
+      # Optional: Add authentication
+      # traefik.ingress.kubernetes.io/router.middlewares: "auth-middleware@kubernetescrd"
+    tls:
+      enabled: true
+
+# LDAPS external access
+ingressRouteTCP:
+  enabled: true
+  entryPoint: "ldaps"
+  passthrough: true

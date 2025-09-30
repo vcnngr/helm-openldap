@@ -1,0 +1,23 @@
+{{- if and .Values.openldap.tls.enabled .Values.openldap.tls.certificate.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "openldap-ha.fullname" . }}-tls
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openldap-ha.labels" . | nindent 4 }}
+spec:
+  secretName: {{ include "openldap-ha.fullname" . }}-tls-secret
+  duration: {{ .Values.openldap.tls.certificate.duration }}
+  renewBefore: {{ .Values.openldap.tls.certificate.renewBefore }}
+  subject:
+    organizations:
+      {{- toYaml .Values.openldap.tls.certificate.subject.organizations | nindent 6 }}
+  commonName: "*.{{ .Values.openldap.domain }}"
+  dnsNames:
+    - "*.{{ .Values.openldap.domain }}"
+    - "{{ .Values.openldap.domain }}"
+  issuerRef:
+    name: {{ .Values.openldap.tls.certificate.issuerName }}
+    kind: {{ .Values.openldap.tls.certificate.issuerKind }}
+{{- end }}

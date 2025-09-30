@@ -1,39 +1,73 @@
-{{- /*
-templates/NOTES.txt
-This file contains the post-installation notes.
-*/}}
+*******************************************************************************
+***   OpenLDAP HA has been successfully installed!                        ***
+*******************************************************************************
 
-{{- define "openldap-enterprise.notes" }}
-{{- $fullname := include "common.names.fullname" . -}}
-{{- $secretName := include "openldap-enterprise.secretName" . -}}
-{{- $releaseName := .Release.Name -}}
-{{- $namespace := .Release.Namespace -}}
+Release Name: {{ .Release.Name }}
+Namespace: {{ .Values.namespace }}
 
-1. **Deployment Status**
-   Run this command to check the status of your OpenLDAP StatefulSet:
-   kubectl get statefulset -n {{ $namespace }} {{ $fullname }}
+OpenLDAP Configuration:
+  Organization: {{ .Values.openldap.organization }}
+  Domain: {{ .Values.openldap.domain }}
+  Base DN: {{ include "openldap-ha.baseDN" . }}
+  Replicas: {{ .Values.openldap.replication.replicas }}
+  TLS Enabled: {{ .Values.openldap.tls.enabled }}
 
-2. **Connecting to the Service**
-   Your OpenLDAP cluster is available inside the cluster at the following service address:
-   - Host: {{ $fullname }}.{{ $namespace }}.svc.{{ .Values.clusterDomain }}
-   - LDAPS Port: {{ .Values.service.ports.ldaps }}
+1. Get the OpenLDAP service endpoints:
 
-3. **Administrative Credentials**
-   {{- if .Values.auth.existingSecret }}
-   Passwords are being managed by your pre-existing secret: {{ .Values.auth.existingSecret }}
-   {{- else }}
-   A password for the admin user ({{ .Values.auth.adminUser }}) has been stored in the secret: {{ $secretName }}
-   To retrieve it, run the following command:
-   kubectl get secret --namespace {{ $namespace }} {{ $secretName }} -o jsonpath="{.data.admin-password}" | base64 -d | xargs echo "Admin Password:"
-   {{- end }}
+   LDAP (plaintext):
+   kubectl get svc {{ include "openldap-ha.fullname" . }} -n {{ .Values.namespace }}
+   
+   Internal DNS:
+   {{ include "openldap-ha.fullname" . }}.{{ .Values.namespace }}.svc.cluster.local:{{ .Values.service.ldapPort }}
+
+2. Get admin password:
+
+   kubectl get secret {{ include "openldap-ha.fullname" . }}-secrets -n {{ .Values.namespace }} -o jsonpath='{.data.LDAP_ADMIN_PASSWORD}' | base64 -d
+
+3. Test LDAP connection from within cluster:
+
+   kubectl run ldap-test --rm -it --image=osixia/openldap:1.5.0 --restart=Never -- \
+     ldapsearch -x -H ldap://{{ include "openldap-ha.fullname" . }}.{{ .Values.namespace }}.svc.cluster.local:{{ .Values.service.ldapPort }} \
+     -b "{{ include "openldap-ha.baseDN" . }}" \
+     -D "cn=admin,{{ include "openldap-ha.baseDN" . }}" \
+     -w "$(kubectl get secret {{ include "openldap-ha.fullname" . }}-secrets -n {{ .Values.namespace }} -o jsonpath='{.data.LDAP_ADMIN_PASSWORD}' | base64 -d)"
 
 {{- if .Values.phpldapadmin.enabled }}
-4. **Accessing phpLDAPadmin**
-   The phpLDAPadmin web UI is available at the following address (it might take a few minutes for the ingress to be ready):
-   {{- $phpldapadminIngress := index .Values.phpldapadmin.ingress.hosts 0 }}
 
-     https://{{ $phpldapadminIngress.host }}
+4. Access phpLDAPadmin web interface:
+
+{{- if .Values.phpldapadmin.ingress.enabled }}
+   URL: https://{{ .Values.phpldapadmin.ingress.hostname }}
+   
+   Login with:
+   - Login DN: cn=admin,{{ include "openldap-ha.baseDN" . }}
+   - Password: (use command from step 2)
+{{- else }}
+   Port-forward to access locally:
+   kubectl port-forward -n {{ .Values.namespace }} svc/{{ include "openldap-ha.fullname" . }}-phpldapadmin {{ .Values.phpldapadmin.port }}:{{ .Values.phpldapadmin.port }}
+   
+   Then access: http://localhost:{{ .Values.phpldapadmin.port }}
 {{- end }}
 {{- end }}
 
-{{- include "openldap-enterprise.notes" . }}
+{{- if .Values.ingressRouteTCP.enabled }}
+
+5. LDAPS (TLS) external access:
+
+   The LDAPS port is exposed via Traefik IngressRouteTCP on entrypoint: {{ .Values.ingressRouteTCP.entryPoint }}
+   Configure your external clients to connect using LDAPS protocol.
+{{- end }}
+
+6. Monitor StatefulSet pods:
+
+   kubectl get pods -n {{ .Values.namespace }} -l app=openldap -w
+
+7. Check replication status:
+
+   kubectl exec -n {{ .Values.namespace }} {{ include "openldap-ha.fullname" . }}-0 -- \
+     ldapsearch -Y EXTERNAL -H ldapi:/// -b "cn=config" "(olcSyncrepl=*)" olcSyncrepl
+
+*******************************************************************************
+For more information, visit: https://www.openldap.org/
+Chart Repository: https://slackarea.github.io/charts/ 
+*******************************************************************************

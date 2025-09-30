@@ -1,28 +1,18 @@
 apiVersion: v2
-name: openldap-enterprise
-description: A truly enterprise-ready OpenLDAP Helm chart, independent and robust.
+name: openldap-ha
+description: High Availability OpenLDAP deployment with multi-master replication
 type: application
 version: 1.0.0
-appVersion: "2.6"
+appVersion: "1.5.0"
 keywords:
-  - ldap
   - openldap
+  - ldap
   - directory
   - authentication
-  - enterprise
+  - high-availability
 home: https://www.openldap.org/
 sources:
-  - https://github.com/bitnami/containers/tree/main/bitnami/openldap
-icon: https://bitnami.com/assets/stacks/openldap/img/openldap-stack-220x234.png
-annotations:
-  category: Database
-dependencies:
-  # Crucial dependency for Bitnami patterns
-  - name: common
-    repository: oci://registry-1.docker.io/bitnamicharts
-    version: 2.x.x
-  # Community phpLDAPadmin sub-chart
-  - name: phpldapadmin
-    repository: https://roertel.github.io/helm-charts
-    version: "0.1.4-2"
-    condition: phpldapadmin.enabled
+  - https://github.com/osixia/docker-openldap
+maintainers:
+  - name: Your Name
+    email: your.email@example.com

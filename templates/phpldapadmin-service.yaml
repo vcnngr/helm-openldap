@@ -1,0 +1,16 @@
+{{- if .Values.phpldapadmin.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openldap-ha.fullname" . }}-phpldapadmin
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openldap-ha.phpldapadmin.labels" . | nindent 4 }}
+spec:
+  ports:
+    - name: http
+      port: {{ .Values.phpldapadmin.port }}
+      targetPort: {{ .Values.phpldapadmin.port }}
+  selector:
+    {{- include "openldap-ha.phpldapadmin.selectorLabels" . | nindent 4 }}
+{{- end }}

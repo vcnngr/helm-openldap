@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openldap-ha.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openldap-ha.labels" . | nindent 4 }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - name: ldap
+      port: {{ .Values.service.ldapPort }}
+      targetPort: {{ .Values.openldap.ports.ldap }}
+    - name: ldaps
+      port: {{ .Values.service.ldapsPort }}
+      targetPort: {{ .Values.openldap.ports.ldaps }}
+  selector:
+    {{- include "openldap-ha.selectorLabels" . | nindent 4 }}

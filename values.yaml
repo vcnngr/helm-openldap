@@ -1,115 +1,172 @@
-# Default values for the openldap-enterprise Helm chart.
-# Do not modify this file directly. Create an override file for your installations.
+# Default values for openldap-ha
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
 
-global:
-  imageRegistry: ""
-  imagePullSecrets: []
-  storageClass: ""
+# Namespace where to deploy
+namespace: authspace
 
+# OpenLDAP Configuration
+openldap:
+  # Docker image
+  image:
+    repository: osixia/openldap
+    tag: "1.5.0"
+    pullPolicy: IfNotPresent
+
+  # LDAP Organization and Domain
+  organization: "MyOrganization"
+  domain: "example.com"
+  # baseDN is auto-calculated from domain if not specified
+  baseDN: ""  # Example: "dc=example,dc=com" - leave empty for auto-calculation
+
+  # Admin credentials (CHANGE THESE IN PRODUCTION!)
+  adminPassword: "changeme"
+  configPassword: "changeme"
+
+  # Port configuration - can be overridden
+  ports:
+    ldap: 389
+    ldaps: 636
+
+  # Replication settings
+  replication:
+    enabled: true
+    replicas: 3
+    # Replication sync configuration
+    configSyncprov: 'binddn="cn=admin,cn=config" bindmethod=simple credentials=$LDAP_CONFIG_PASSWORD searchbase="cn=config" type=refreshAndPersist retry="60 +" timeout=1'
+    dbSyncprov: 'binddn="cn=admin,$LDAP_BASE_DN" bindmethod=simple credentials=$LDAP_ADMIN_PASSWORD searchbase="$LDAP_BASE_DN" type=refreshAndPersist interval=00:00:00:10 retry="60 +" timeout=1'
+
+  # TLS Configuration
+  tls:
+    enabled: true
+    enforce: false
+    verifyClient: "never"
+    # Certificate configuration
+    certificate:
+      enabled: true
+      # ClusterIssuer to use (cert-manager)
+      issuerName: "letsencrypt-prod"
+      issuerKind: "ClusterIssuer"
+      duration: "2160h"  # 90 days
+      renewBefore: "360h"  # 15 days before
+      # Certificate subject
+      subject:
+        organizations:
+          - "MyOrganization"
+
+  # Logging level (256 = stats, 0 = no logging)
+  logLevel: "256"
+
+  # Keep existing config on pod restart
+  keepExistingConfig: false
+
+  # Pod resources
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "2000m"
+
+  # Liveness probe configuration
+  livenessProbe:
+    enabled: true
+    tcpSocket:
+      port: ldap
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 6
+
+  # Readiness probe configuration
+  readinessProbe:
+    enabled: true
+    tcpSocket:
+      port: ldap
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  # Persistent Volume Claims
+  persistence:
+    data:
+      enabled: true
+      accessMode: ReadWriteOnce
+      size: 8Gi
+      storageClass: ""  # Use default if not specified
+    config:
+      enabled: true
+      accessMode: ReadWriteOnce
+      size: 1Gi
+      storageClass: ""  # Use default if not specified
+
+  # Pod Anti-Affinity (to spread pods across nodes)
+  antiAffinity:
+    enabled: true
+    weight: 100
+
+# Service Configuration
+service:
+  type: ClusterIP
+  # Service ports (can be different from container ports if needed)
+  ldapPort: 389
+  ldapsPort: 636
+  # Annotations for the service
+  annotations: {}
+
+# Headless Service Configuration
+headlessService:
+  annotations: {}
+
+# PodDisruptionBudget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+# phpLDAPadmin Configuration
+phpldapadmin:
+  enabled: true
+  
+  image:
+    repository: osixia/phpldapadmin
+    tag: "0.9.0"
+    pullPolicy: IfNotPresent
+
+  replicas: 1
+
+  # Port configuration
+  port: 80
+
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "50m"
+    limits:
+      memory: "128Mi"
+      cpu: "200m"
+
+  # Ingress configuration
+  ingress:
+    enabled: true
+    className: "traefik"
+    hostname: "ldapadmin.example.com"
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      traefik.ingress.kubernetes.io/router.entrypoints: "websecure"
+      traefik.ingress.kubernetes.io/router.tls: "true"
+    tls:
+      enabled: true
+      secretName: ""  # Auto-generated if empty
+
+# Traefik IngressRouteTCP for LDAPS
+ingressRouteTCP:
+  enabled: true
+  entryPoint: "ldaps"
+  # Uses TLS passthrough to pass encrypted traffic directly to OpenLDAP
+  passthrough: true
+
+# Global naming overrides
 nameOverride: ""
 fullnameOverride: ""
-clusterDomain: cluster.local
-
-image:
-  registry: docker.io
-  repository: bitnami/openldap
-  tag: "2.6.9-debian-12-r0"
-  pullPolicy: IfNotPresent
-  pullSecrets: []
-
-auth:
-  adminUser: "admin"
-  existingSecret: ""
-  adminPassword: ""
-  configPassword: ""
-
-directory:
-  baseDN: "dc=example,dc=org"
-  organisation: "Example Inc."
-
-  quickstart:
-    enabled: true
-    userOu: "users"
-    groupOu: "groups"
-    users: "user01,user02"
-    passwords: "bitnami1,bitnami2"
-    group: "readers"
-
-  customLdifs: {}
-
-multiTenant:
-  enabled: false
-  additionalSuffixes: []
-
-highAvailability:
-  enabled: true
-  replicaCount: 3
-
-tls:
-  enabled: true
-  existingSecret: "" # Required if tls.enabled=true
-
-persistence:
-  enabled: true
-  storageClassName: ""
-  size: 10Gi
-
-statefulsetAnnotations: {}
-affinity:
-  podAntiAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-    - labelSelector:
-        matchExpressions:
-        - key: app.kubernetes.io/name
-          operator: In
-          values:
-          - openldap-enterprise
-      topologyKey: "kubernetes.io.hostname"
-
-service:
-  type: ClusterIP # Exposed via Traefik IngressRouteTCP, not directly
-  ports:
-    ldap: 1389 # Internal non-TLS port for probes
-    ldaps: 1636 # Internal TLS port
-  annotations: {}
-
-## @section Service Account
-##
-serviceAccount:
-  ## @param serviceAccount.create Specifies whether a ServiceAccount should be created.
-  create: true
-  ## @param serviceAccount.name The name of the ServiceAccount to use.
-  ## If not set and create is true, a name is generated using the fullname template.
-  name: ""
-  ## @param serviceAccount.automountServiceAccountToken Automount service account token.
-  automountServiceAccountToken: false
-  ## @param serviceAccount.annotations Annotations for the service account.
-  annotations: {}
-
-metrics:
-  enabled: false
-  serviceMonitor:
-    enabled: false
-    namespace: monitoring
-
-## @section Sub-chart: phpldapadmin
-## Configuration for the alphani/phpldapadmin sub-chart
-phpldapadmin:
-  ## @param phpldapadmin.enabled Enable the deployment of the phpLDAPadmin web UI.
-  enabled: false
-
-  replicaCount: 1
-  
-  ## @param phpldapadmin.env Environment variables for the container.
-  ## This must be a MAP (key-value), not a list.
-  ## It will be merged with the values provided in the override file.
-  env:
-    PHPLDAPADMIN_HTTPS: "false"
-    PHPLDAPADMIN_TRUST_PROXY_SSL: "true"
-
-  ## @section Ingress Configuration
-  ingress:
-    enabled: false
-    hostname: ""
-    annotations: {}
-    tls: []

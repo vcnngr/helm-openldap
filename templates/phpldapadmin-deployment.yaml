@@ -1,0 +1,33 @@
+{{- if .Values.phpldapadmin.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "openldap-ha.fullname" . }}-phpldapadmin
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openldap-ha.phpldapadmin.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.phpldapadmin.replicas }}
+  selector:
+    matchLabels:
+      {{- include "openldap-ha.phpldapadmin.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "openldap-ha.phpldapadmin.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: phpldapadmin
+          image: "{{ .Values.phpldapadmin.image.repository }}:{{ .Values.phpldapadmin.image.tag }}"
+          imagePullPolicy: {{ .Values.phpldapadmin.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.phpldapadmin.port }}
+          env:
+            - name: PHPLDAPADMIN_LDAP_HOSTS
+              value: "{{ include "openldap-ha.fullname" . }}.{{ .Values.namespace }}.svc.cluster.local"
+            - name: PHPLDAPADMIN_HTTPS
+              value: "false"
+          resources:
+            {{- toYaml .Values.phpldapadmin.resources | nindent 12 }}
+{{- end }}

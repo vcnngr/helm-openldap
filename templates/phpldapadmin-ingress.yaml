@@ -1,0 +1,32 @@
+{{- if and .Values.phpldapadmin.enabled .Values.phpldapadmin.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "openldap-ha.fullname" . }}-phpldapadmin
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openldap-ha.phpldapadmin.labels" . | nindent 4 }}
+  {{- with .Values.phpldapadmin.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.phpldapadmin.ingress.className }}
+  {{- if .Values.phpldapadmin.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.phpldapadmin.ingress.hostname }}
+      secretName: {{ .Values.phpldapadmin.ingress.tls.secretName | default (printf "%s-phpldapadmin-tls" (include "openldap-ha.fullname" .)) }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.phpldapadmin.ingress.hostname }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "openldap-ha.fullname" . }}-phpldapadmin
+                port:
+                  number: {{ .Values.phpldapadmin.port }}
+{{- end }}
